@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Scanner</title>
+<style>
+  :root{
+    --ink:#14161B;
+    --panel:#1B1E25;
+    --panel-2:#20242D;
+    --line:#2B2F3A;
+    --text:#E7E9EE;
+    --muted:#8A90A0;
+    --phosphor:#7CFFB2;
+    --amber:#FFB454;
+    --red:#FF6E6E;
+    --blue:#6FB4FF;
+    --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);}
+  body{
+    color:var(--text);
+    font-family:var(--sans);
+    padding:28px;
+    min-height:100vh;
+  }
+  .cs-root{max-width:1100px;margin:0 auto;}
+  .cs-header{margin-bottom:22px;}
+  .cs-title{
+    font-size:24px;
+    font-weight:650;
+    letter-spacing:-0.01em;
+    margin:0 0 6px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .cs-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--phosphor);
+    box-shadow:0 0 10px var(--phosphor);
+    flex-shrink:0;
+  }
+  .cs-sub{
+    font-size:13px;
+    color:var(--muted);
+    max-width:520px;
+    line-height:1.5;
+    margin:0;
+  }
+  .cs-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+    margin-top:22px;
+  }
+  @media (max-width:760px){
+    .cs-grid{grid-template-columns:1fr;}
+  }
+  .cs-pane{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .cs-pane-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    background:var(--panel-2);
+  }
+  .cs-pane-label{
+    font-size:11.5px;
+    color:var(--muted);
+    font-family:var(--mono);
+    letter-spacing:0.02em;
+  }
+  select.cs-lang{
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 8px;
+    font-family:var(--mono);
+    font-size:12px;
+  }
+  textarea.cs-code{
+    flex:1;
+    min-height:360px;
+    background:transparent;
+    border:none;
+    outline:none;
+    resize:vertical;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.6;
+    padding:14px;
+    tab-size:2;
+  }
+  textarea.cs-code::placeholder{color:#565C6C;}
+  .cs-actions{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px 14px;
+    border-top:1px solid var(--line);
+    background:var(--panel-2);
+  }
+  button.cs-run{
+    background:var(--phosphor);
+    color:#0B1410;
+    border:none;
+    font-weight:650;
+    font-size:13px;
+    padding:9px 18px;
+    border-radius:7px;
+    cursor:pointer;
+    font-family:var(--sans);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  button.cs-run:hover{box-shadow:0 0 0 3px rgba(124,255,178,0.18);}
+  button.cs-run:active{transform:scale(0.97);}
+  .cs-upload{
+    border:1px solid var(--line);
+    color:var(--text);
+    font-size:12.5px;
+    padding:8px 14px;
+    border-radius:7px;
+    cursor:pointer;
+    font-family:var(--sans);
+    background:transparent;
+    transition:border-color .12s ease, color .12s ease;
+  }
+  .cs-upload:hover{border-color:var(--phosphor); color:var(--phosphor);}
+  .cs-filename{
+    font-size:11.5px;
+    color:var(--phosphor);
+    font-family:var(--mono);
+  }
+  .cs-hint{font-size:11.5px;color:var(--muted);}
+  .cs-results{
+    padding:14px;
+    overflow-y:auto;
+    max-height:560px;
+  }
+  .cs-empty{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.7;
+    padding:24px 10px;
+  }
+  .cs-summary{
+    font-size:13px;
+    color:var(--text);
+    line-height:1.6;
+    padding:0 2px 14px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:14px;
+  }
+  .cs-summary b{color:var(--phosphor);font-family:var(--mono);}
+  .cs-issue{
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    background:var(--panel-2);
+  }
+  .cs-issue-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+  }
+  .cs-badge{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:0.03em;
+    padding:2px 7px;
+    border-radius:5px;
+    font-weight:600;
+  }
+  .cs-badge.error{background:rgba(255,110,110,0.15);color:var(--red);}
+  .cs-badge.warning{background:rgba(255,180,84,0.15);color:var(--amber);}
+  .cs-badge.info{background:rgba(111,180,255,0.15);color:var(--blue);}
+  .cs-issue-title{font-size:13.5px;font-weight:600;}
+  .cs-issue-line{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--muted);
+    margin-left:auto;
+  }
+  .cs-issue-desc{
+    font-size:12.5px;
+    color:#C7CBD6;
+    line-height:1.55;
+    margin:0 0 8px;
+  }
+  .cs-fix{
+    background:#151820;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 10px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--phosphor);
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .cs-fix-label{
+    font-family:var(--sans);
+    color:var(--muted);
+    font-size:10.5px;
+    margin-bottom:4px;
+    display:block;
+  }
+  .cs-fix-actions{
+    margin-top:8px;
+  }
+  button.cs-autofix{
+    background:transparent;
+    border:1px solid var(--phosphor);
+    color:var(--phosphor);
+    font-size:11.5px;
+    font-family:var(--sans);
+    font-weight:600;
+    padding:6px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    transition:background .12s ease;
+  }
+  button.cs-autofix:hover{background:rgba(124,255,178,0.12);}
+  .cs-manual-tag{
+    font-size:11px;
+    color:var(--muted);
+    font-family:var(--mono);
+    font-style:italic;
+  }
+  .cs-clean{
+    color:var(--phosphor);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:20px 4px;
+  }
+  .cs-note{
+    margin-top:16px;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.6;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+</style>
+</head>
+<body>
+<div class="cs-root">
+  <div class="cs-header">
+    <p class="cs-title"><span class="cs-dot"></span>Code Scanner</p>
+    <p class="cs-sub">Paste code any AI wrote for you — this runs fully in your browser, no server or API key needed, and flags common mistakes instantly.</p>
+  </div>
+
+  <div class="cs-grid">
+    <div class="cs-pane">
+      <div class="cs-pane-head">
+        <span class="cs-pane-label">INPUT</span>
+        <select class="cs-lang" id="csLang">
+          <option value="auto">Auto-detect</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="c">C</option>
+          <option value="cpp">C++</option>
+          <option value="java">Java</option>
+          <option value="php">PHP</option>
+          <option value="go">Go</option>
+          <option value="ruby">Ruby</option>
+          <option value="sql">SQL</option>
+        </select>
+      </div>
+      <textarea class="cs-code" id="csCode" placeholder="Paste the AI-generated code here, or upload a file below..."></textarea>
+      <div class="cs-actions">
+        <button class="cs-run" id="csRun">Scan code</button>
+        <label class="cs-upload" for="csFile">Upload file</label>
+        <input type="file" id="csFile" accept=".py,.js,.ts,.jsx,.tsx,.c,.h,.cpp,.hpp,.cc,.java,.php,.go,.rb,.sql,.txt" hidden>
+        <span class="cs-hint" id="csHint">Runs instantly, offline, in your browser</span>
+      </div>
+    </div>
+
+    <div class="cs-pane">
+      <div class="cs-pane-head">
+        <span class="cs-pane-label">FINDINGS</span>
+      </div>
+      <div class="cs-results" id="csResults">
+        <div class="cs-empty">Results will show up here once you scan some code.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cs-note">
+    Supports Python, JavaScript, TypeScript, C, C++, Java, PHP, Go, Ruby, and SQL. You can paste code directly or upload a file. Issues with a clear, unambiguous mechanical fix (like "=" vs "==", or off-by-one loop bounds) show an "Apply fix automatically" button that edits your code directly. Issues that need judgment about intent (like choosing a type, adding business logic, or picking specific SQL columns) are flagged with a suggested fix for you to apply manually — a script can't safely guess those without understanding what the code is meant to do.
+  </div>
+</div>
+
+<script>
+(function(){
+  const runBtn = document.getElementById('csRun');
+  const codeEl = document.getElementById('csCode');
+  const langEl = document.getElementById('csLang');
+  const resultsEl = document.getElementById('csResults');
+  const fileEl = document.getElementById('csFile');
+  const hintEl = document.getElementById('csHint');
+
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  const EXT_MAP = {
+    py:'python', js:'javascript', jsx:'javascript', ts:'typescript', tsx:'typescript',
+    c:'c', h:'c', cpp:'cpp', hpp:'cpp', cc:'cpp',
+    java:'java', php:'php', go:'go', rb:'ruby', sql:'sql', txt:'auto'
+  };
+
+  fileEl.addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt){
+      codeEl.value = evt.target.result;
+      const ext = file.name.split('.').pop().toLowerCase();
+      if(EXT_MAP[ext] && EXT_MAP[ext] !== 'auto'){
+        langEl.value = EXT_MAP[ext];
+      }
+      hintEl.textContent = 'Loaded: ' + file.name;
+    };
+    reader.onerror = function(){
+      hintEl.textContent = 'Could not read that file';
+    };
+    reader.readAsText(file);
+  });
+
+  function detectLanguage(code){
+    if(/<\?php/.test(code)) return 'php';
+    if(/\bfunc\s+main\s*\(/.test(code) || /\bpackage\s+main\b/.test(code)) return 'go';
+    if(/\bdef\s+\w+[\s\S]*?\bend\b/.test(code) && /puts\s/.test(code)) return 'ruby';
+    if(/\bSELECT\b[\s\S]*\bFROM\b/i.test(code) && /;/.test(code) && !/\bfunction\b|\bdef\b/.test(code)) return 'sql';
+    if(/#include\s*</.test(code) && /\bstd::|cout\s*<<|\bclass\s+\w+/.test(code)) return 'cpp';
+    if(/#include\s*</.test(code) || /\bprintf\s*\(/.test(code)) return 'c';
+    if(/\bpublic\s+class\b/.test(code) || /System\.out\.println/.test(code)) return 'java';
+    if(/:\s*\w+\s*=|interface\s+\w+|:\s*(string|number|boolean)\b/.test(code) && /\bconst\b|\blet\b/.test(code)) return 'typescript';
+    if(/\bdef\s+\w+\s*\(/.test(code) || /:\s*$/.test(code.split('\n').find(l=>l.trim().startsWith('def'))||'')) return 'python';
+    if(/\bfunction\b|\=\>|\bconst\b|\blet\b|console\.log/.test(code)) return 'javascript';
+    return 'unknown';
+  }
+
+  function scanCode(code, lang){
+    const issues = [];
+    const lines = code.split('\n');
+
+    lines.forEach((line, idx) => {
+      const n = idx + 1;
+      const trimmed = line.trim();
+
+      // Assignment instead of comparison inside if/while (JS/C/Java)
+      if(/^(if|while)\s*\([^=!<>]*[^=!<>]=[^=][^)]*\)/.test(trimmed) && !/==|!=|<=|>=/.test(trimmed)){
+        issues.push({severity:'error', line:n, title:'Assignment used instead of comparison',
+          description:'This looks like a single "=" inside a condition, which assigns a value instead of comparing it. The condition will almost always evaluate as truthy, causing incorrect behavior.',
+          fix:'Use "==" (or "===" in JS) to compare values instead of "=".',
+          autoFix:{type:'assignment', lineIndex:idx}});
+      }
+
+      // Off-by-one loop bound
+      if(/for\s*\([^;]*;\s*\w+\s*<=\s*\w+\.(length|size\(\))/.test(trimmed)){
+        issues.push({severity:'warning', line:n, title:'Possible off-by-one loop bound',
+          description:'Using "<=" with .length or .size() usually causes the loop to run one iteration too many, accessing an index that does not exist.',
+          fix:'Change "<=" to "<" when comparing against .length or .size().',
+          autoFix:{type:'offByOne', lineIndex:idx}});
+      }
+      if(/for\s*\([^;]*;\s*\w+\s*<=\s*\w+\)/.test(trimmed) && /range|len\(/.test(code)){
+        // heuristic for c-style off by one generally
+      }
+
+      // Returning address/pointer of local stack array (C)
+      if(lang === 'c' && /return\s+\w+\s*;/.test(trimmed)){
+        const varName = trimmed.match(/return\s+(\w+)\s*;/)?.[1];
+        if(varName){
+          const declPattern = new RegExp('int\\s+' + varName + '\\s*\\[');
+          if(declPattern.test(code)){
+            issues.push({severity:'error', line:n, title:'Returning pointer to local stack array',
+              description:'A locally declared array ("' + varName + '") lives on the stack and is destroyed when the function returns. Returning it and using it afterward is undefined behavior.',
+              fix:'Allocate the array with malloc() on the heap instead, and free() it when done — never return a stack array.'});
+          }
+        }
+      }
+
+      // free() on non-malloc'd memory (heuristic: freeing a var never assigned via malloc)
+      if(lang === 'c' && /\bfree\s*\(\s*(\w+)\s*\)/.test(trimmed)){
+        const varName = trimmed.match(/free\s*\(\s*(\w+)\s*\)/)?.[1];
+        if(varName && !new RegExp(varName + '\\s*=\\s*\\(?\\s*\\w*\\*?\\)?\\s*malloc').test(code)){
+          issues.push({severity:'warning', line:n, title:'free() called on possibly non-heap memory',
+            description:'"' + varName + '" does not appear to have been allocated with malloc()/calloc(). Calling free() on memory that was not heap-allocated causes undefined behavior or a crash.',
+            fix:'Only call free() on pointers returned by malloc(), calloc(), or realloc().'});
+        }
+      }
+
+      // Map/dict .get() used without null/None check before further use (Java HashMap, JS Map)
+      if(/\.get\s*\([^)]*\)\s*;?\s*$/.test(trimmed) && !/if\s*\(/.test(trimmed) && lang === 'java'){
+        issues.push({severity:'warning', line:n, title:'Unchecked map lookup',
+          description:'Calling .get() on a map without checking whether the key exists can return null, causing a NullPointerException when the result is used (especially with auto-unboxing to a primitive).',
+          fix:'Check containsKey() first, or use getOrDefault() with a sensible fallback value.'});
+      }
+
+      // Divide with no zero-check nearby
+      if(/\/\s*\w+\s*[;\)]/.test(trimmed) && !/if\s*\(/.test(lines[Math.max(0,idx-1)]||'')){
+        const denom = trimmed.match(/\/\s*(\w+)\s*[;\)]/)?.[1];
+        if(denom && !/^\d+$/.test(denom)){
+          issues.push({severity:'info', line:n, title:'Possible division by zero',
+            description:'Dividing by "' + denom + '" without a visible zero-check nearby could throw a runtime error or produce an infinite/NaN result if it is ever zero.',
+            fix:'Add a check like "if (' + denom + ' != 0)" before dividing, or handle the zero case explicitly.'});
+        }
+      }
+
+      // Withdraw/deduct pattern without insufficient-funds check (heuristic for finance-style code)
+      if(/balance\s*-\s*amount/.test(trimmed) && !/if\s*\(.*balance/.test(lines.slice(Math.max(0,idx-3), idx).join(' '))){
+        issues.push({severity:'warning', line:n, title:'No sufficient-balance check before deduction',
+          description:'The balance is being reduced without first confirming it is large enough to cover the amount, which could allow it to go negative.',
+          fix:'Add a check like "if (balance >= amount)" before subtracting, and handle the insufficient-funds case.'});
+      }
+
+      // max_val initialized to 0 (fails for all-negative inputs)
+      if(/max(_val)?\s*=\s*0\s*;?\s*$/.test(trimmed)){
+        issues.push({severity:'info', line:n, title:'Max initialized to 0',
+          description:'Initializing a running maximum to 0 gives a wrong result if every value in the input is negative, since 0 would incorrectly "win".',
+          fix:'Initialize it to the first element of the collection, or to negative infinity, instead of 0.'});
+      }
+
+      // PHP: SQL built via string concatenation (SQL injection risk)
+      if(lang === 'php' && /\$(?:query|sql)\s*=\s*["'].*\.\s*\$\w+/.test(trimmed)){
+        issues.push({severity:'error', line:n, title:'SQL query built with string concatenation',
+          description:'Building a SQL query by concatenating a variable directly into the string allows SQL injection if that value comes from user input.',
+          fix:'Use prepared statements with bound parameters (PDO or mysqli), e.g. $stmt->prepare(...) with placeholders, instead of concatenation.'});
+      }
+      // PHP: superglobal used directly without sanitization
+      if(lang === 'php' && /\$_(GET|POST|REQUEST)\[[^\]]+\]/.test(trimmed) && /echo|query|sql/i.test(trimmed)){
+        issues.push({severity:'warning', line:n, title:'Unsanitized user input used directly',
+          description:'Using $_GET/$_POST directly in output or a query without validation or escaping opens the door to XSS or SQL injection.',
+          fix:'Validate/sanitize the input first, use htmlspecialchars() for output, and prepared statements for queries.'});
+      }
+
+      // Go: ignored error return value
+      if(lang === 'go' && /^_\s*,?\s*\w*\s*:?=\s*\w+\(.*\)\s*$/.test(trimmed) && /err/.test(line) === false && /,\s*_\s*:?=/.test(trimmed)){
+        issues.push({severity:'warning', line:n, title:'Error return value ignored',
+          description:'The error returned by this call is being discarded with "_". If the call fails, the program will silently continue with invalid data.',
+          fix:'Capture the error and handle it, e.g. "if err != nil { ... }", instead of discarding it with "_".'});
+      }
+      if(lang === 'go' && /if\s+err\s*!=\s*nil\s*\{\s*\}/.test(trimmed)){
+        issues.push({severity:'warning', line:n, title:'Empty error handling block',
+          description:'The error is checked but the handling block is empty, so a failure is silently swallowed.',
+          fix:'Log the error, return it to the caller, or handle it meaningfully instead of leaving the block empty.'});
+      }
+
+      // Ruby: rescue with no handling (swallowed exception)
+      if(lang === 'ruby' && /rescue\s*(=>\s*\w+)?\s*$/.test(trimmed)){
+        issues.push({severity:'warning', line:n, title:'Bare rescue with no handling',
+          description:'A bare "rescue" catches all exceptions (including ones you may not want to catch) and, without a body, silently swallows the error.',
+          fix:'Rescue a specific exception class and handle or log it, e.g. "rescue StandardError => e; log(e)".'});
+      }
+
+      // SQL: SELECT * usage
+      if(lang === 'sql' && /SELECT\s+\*\s+FROM/i.test(trimmed)){
+        issues.push({severity:'info', line:n, title:'SELECT * used instead of explicit columns',
+          description:'Selecting all columns can pull unnecessary data, break if the table schema changes, and hurts performance on large tables.',
+          fix:'List only the specific columns you need instead of using SELECT *.'});
+      }
+      // SQL: DELETE/UPDATE without WHERE clause
+      if(lang === 'sql' && /^(DELETE\s+FROM|UPDATE)\s+\w+/i.test(trimmed) && !/WHERE/i.test(code.split('\n').slice(idx, idx+3).join(' '))){
+        issues.push({severity:'error', line:n, title:'DELETE/UPDATE without WHERE clause',
+          description:'This statement has no visible WHERE clause, meaning it could affect every row in the table instead of just the intended ones.',
+          fix:'Add a WHERE clause that targets only the specific row(s) you intend to change or delete.'});
+      }
+
+      // TypeScript/JS: using 'any' type defeats type safety
+      if(lang === 'typescript' && /:\s*any\b/.test(trimmed)){
+        issues.push({severity:'info', line:n, title:'"any" type used',
+          description:'Typing a value as "any" disables TypeScript type checking for it, which can hide real bugs that the compiler would otherwise catch.',
+          fix:'Use a specific type or interface instead of "any" wherever possible.'});
+      }
+    });
+
+    return issues;
+  }
+
+  function renderResults(issues, lang){
+    if(issues.length === 0){
+      resultsEl.innerHTML = `
+        <div class="cs-summary">Detected language: <b>${esc(lang)}</b></div>
+        <div class="cs-clean">✓ No common issues matched. (This rule-based scanner checks known patterns — it's not a full guarantee the code is bug-free.)</div>`;
+      return;
+    }
+    let html = `<div class="cs-summary">Detected language: <b>${esc(lang)}</b> — found ${issues.length} potential issue(s)</div>`;
+    issues.forEach((issue, i) => {
+      const fixBtn = issue.autoFix
+        ? `<button class="cs-autofix" data-idx="${i}">Apply fix automatically</button>`
+        : `<span class="cs-manual-tag">Needs manual judgment</span>`;
+      html += `
+        <div class="cs-issue">
+          <div class="cs-issue-top">
+            <span class="cs-badge ${issue.severity}">${issue.severity.toUpperCase()}</span>
+            <span class="cs-issue-title">${esc(issue.title)}</span>
+            <span class="cs-issue-line">line ${esc(issue.line)}</span>
+          </div>
+          <p class="cs-issue-desc">${esc(issue.description)}</p>
+          <div class="cs-fix"><span class="cs-fix-label">Suggested fix</span>${esc(issue.fix)}</div>
+          <div class="cs-fix-actions">${fixBtn}</div>
+        </div>`;
+    });
+    resultsEl.innerHTML = html;
+
+    resultsEl.querySelectorAll('.cs-autofix').forEach(btn => {
+      btn.addEventListener('click', function(){
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        applyAutoFix(issues[idx].autoFix);
+      });
+    });
+  }
+
+  function applyAutoFix(fixInfo){
+    const lines = codeEl.value.split('\n');
+    const line = lines[fixInfo.lineIndex];
+    if(line === undefined) return;
+
+    if(fixInfo.type === 'assignment'){
+      // Replace the first standalone "=" (not ==, !=, <=, >=) inside the condition with "=="
+      lines[fixInfo.lineIndex] = line.replace(/([^=!<>])=([^=])/, '$1==$2');
+    } else if(fixInfo.type === 'offByOne'){
+      lines[fixInfo.lineIndex] = line.replace('<=', '<');
+    }
+
+    codeEl.value = lines.join('\n');
+    hintEl.textContent = 'Fix applied — re-scanning...';
+    setTimeout(() => {
+      const lang = langEl.value === 'auto' ? detectLanguage(codeEl.value) : langEl.value;
+      const issues = scanCode(codeEl.value, lang);
+      renderResults(issues, lang);
+      hintEl.textContent = 'Runs instantly, offline, in your browser';
+    }, 300);
+  }
+
+  runBtn.addEventListener('click', function(){
+    const code = codeEl.value;
+    if(!code.trim()){
+      resultsEl.innerHTML = '<div class="cs-empty">Paste some code first.</div>';
+      return;
+    }
+    const lang = langEl.value === 'auto' ? detectLanguage(code) : langEl.value;
+    const issues = scanCode(code, lang);
+    renderResults(issues, lang);
+  });
+})();
+</script>
+</body>
+</html>
